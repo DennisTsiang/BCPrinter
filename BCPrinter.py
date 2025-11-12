@@ -59,8 +59,6 @@ def generate_barcode_zpl(barcode: str) -> str:
 def validate_input(text: str) -> bool:
     return text is not None and len(strip(text)) >= 13
 
-def printer_button_enable(text: str) -> bool:
-    return text is not None and len(strip(text)) == 13
 
 def update_zpl(text: str) -> str:
     global zpl_code
@@ -116,7 +114,7 @@ def root():
               on_click=lambda: send_zpl_to_printer(zpl_code['value'], printer_select.value)) \
     .props("size=xl") \
     .tooltip("Print") \
-    .bind_enabled_from(user_input, 'value', printer_button_enable)
+    .bind_enabled_from(user_input, 'value', validate_input)
 
 
 # Main
