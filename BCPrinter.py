@@ -24,7 +24,7 @@ zpl_code = {'value': ''}
 
 
 def strip(text: str) -> str:
-    if len(text) < 13:
+    if text is None or len(text) < 13:
         return ""
     stripped_string = text
     if stripped_string[0] == '=':
@@ -57,10 +57,10 @@ def generate_barcode_zpl(barcode: str) -> str:
 
 
 def validate_input(text: str) -> bool:
-    return len(text) == 0 or len(strip(text)) >= 13
+    return text is not None and len(strip(text)) >= 13
 
 def printer_button_enable(text: str) -> bool:
-    return len(strip(text)) == 13
+    return text is not None and len(strip(text)) == 13
 
 def update_zpl(text: str) -> str:
     global zpl_code
@@ -105,7 +105,7 @@ def root():
                 with html.span().style("color: green"):
                     ui.label().bind_text_from(user_input, 'value', get_sequence_number)
             ui.label("Invalid barcode").style("color:red;").bind_visibility_from(
-                user_input, "value", lambda x: not validate_input(x))
+                user_input, "value", lambda x: x is not None and not len(x) == 0 and not validate_input(x))
     ui.label("ZPL Preview:").style('font-size: 120%')
     with ui.card().props('flat bordered'):
         ui.label().style('white-space: pre-wrap').bind_text_from(user_input, 'value', update_zpl)
@@ -123,6 +123,6 @@ def root():
 
 ui.run(root=root,
        title="Royal Papworth Hospital Barcode Printing Ver (2.00)",
-       window_size=(500, 600),
+       window_size=(500, 550),
        favicon="🖨️",
        reload=False)
