@@ -126,7 +126,7 @@ def root():
                     ui.label().bind_text_from(user_input, 'value', get_sequence_number).tooltip("Sequence Number")
             ui.label("Invalid barcode").style("color:red;").bind_visibility_from(
                 user_input, "value", lambda x: x is not None and not len(x) == 0 and not validate_input(x))
-    ui.label("ZPL Preview:").style('font-size: 120%')
+    ui.label("Label Preview:").style('font-size: 120%')
     zpl_preview = ui.image().style('width: 400px; height: 200px; border: 1px solid black;')
     ui_images['zpl_preview'] = zpl_preview
     zpl_preview.bind_source_from(zpl_preview_image_data)
