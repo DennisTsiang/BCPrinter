@@ -3,9 +3,11 @@
 This is an unofficial Windows application made to convert barcode serials into the ISTB 128 standard format for Blood Products for the Royal Papworth Hospital Blood Transfusion department, UK. This can then be sent to a Zebra label printer.
 
 ## Developer Dependencies
-- Python (3.10+)
-- pywin32
-- nicegui
+* Python (3.10+)
+* Python modules:
+    * pywin32
+    * nicegui (3.00+)
+    * requests
 
 ## Usage
 See the GitHub releases page for the latest downloaded executable files. The .exe files avoids having to install any dependencies.
@@ -21,5 +23,5 @@ The NiceGUI Python framework bundles a command called `nicegui-pack` for packagi
 Run the following to package the app, and the .exe file will be built into the `dist` folder:
 
 ```
-nicegui-pack --onefile --windowed --icon favicon.ico  --name "BCPrinter" .\BCPrinter.py`
+nicegui-pack --onefile --windowed --icon favicon.ico  --name "BCPrinter" .\BCPrinter.py
 ```
