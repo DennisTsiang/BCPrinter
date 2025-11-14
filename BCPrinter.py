@@ -110,8 +110,8 @@ def send_zpl_to_printer(zpl_code, printer_name=None):
 
 
 def root():
-    global zpl_preview_image_data
-    user_input = ui.input(placeholder='Original Barcode', on_change=lambda e: update_zpl(e.value))
+    user_input = ui.input(placeholder='Original Barcode', on_change=lambda e: update_zpl(e.value),
+                          validation={'Invalid Barcode': lambda x: validate_input(x)})
     user_input.props('clearable')
     with html.section().style('font-size: 120%'):
         with ui.row():
