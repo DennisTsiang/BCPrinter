@@ -104,7 +104,8 @@ def send_zpl_to_printer(zpl_code, printer_name=None):
         # Get default printer if none specified
         if printer_name is None:
             printer_name = win32print.GetDefaultPrinter()
-        with open("zpl_output_test.txt", 'w') as f:
+        filename = f"{printer_name}.txt"
+        with open(filename, 'w') as f:
             f.write(zpl_code)
         ui.notify(f'Printed!')
     except Exception as e:
