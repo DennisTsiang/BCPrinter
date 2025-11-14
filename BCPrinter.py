@@ -25,6 +25,8 @@ These first 13 characters comprise the Donation Identification Number
 zpl_code = {'value': ''}
 zpl_preview_image_data: dict[str, str] = {'source': ''}
 ui_images: dict[str, ui.image | None] = {'zpl_preview': None}
+user_input: ui.input | None = None
+printer_select: ui.select | None = None
 
 def strip(text: str) -> str:
     if text is None or len(text) < 13:
@@ -108,10 +110,25 @@ def send_zpl_to_printer(zpl_code, printer_name=None):
     except Exception as e:
         ui.notify(f'Print error: {str(e)}', color='negative')
 
+def handle_key_enter():
+    global user_input, printer_select
+    if user_input is not None and validate_input(user_input.value):
+        if printer_select is not None:
+            send_zpl_to_printer(zpl_code['value'], printer_select.value)
+        else:
+            send_zpl_to_printer(zpl_code['value'])
+
+def handle_key(event):
+    global user_input, printer_select
+    if event.action.keyup:
+        if event.key.enter:
+            handle_key_enter()
 
 def root():
+    global zpl_preview_image_data, user_input, printer_select
     user_input = ui.input(placeholder='Original Barcode', on_change=lambda e: update_zpl(e.value),
                           validation={'Invalid Barcode': lambda x: validate_input(x)})
+    user_input.on('keydown.enter', handle_key_enter)
     user_input.props('clearable')
     with html.section().style('font-size: 120%'):
         with ui.row():
@@ -130,15 +147,16 @@ def root():
     zpl_preview = ui.image().style('width: 400px; height: 200px; border: 1px solid black;')
     ui_images['zpl_preview'] = zpl_preview
     zpl_preview.bind_source_from(zpl_preview_image_data)
-    printer_select = ui.select(get_printers(),
+    printer_select_local: ui.select = ui.select(get_printers(),
                                label='Select Printer',
                                value=win32print.GetDefaultPrinter())
-    ui.button(icon="print",
-              on_click=lambda: send_zpl_to_printer(zpl_code['value'], printer_select.value)) \
-    .props("size=xl") \
-    .tooltip("Print") \
-    .bind_enabled_from(user_input, 'value', validate_input)
-
+    printer_select = printer_select_local
+    with ui.button(icon="print",
+              on_click=lambda: send_zpl_to_printer(zpl_code['value'], printer_select_local.value)) as print_button:
+        print_button.props("size=xl")
+        print_button.bind_enabled_from(user_input, 'value', validate_input)
+        ui.tooltip("Print (shortcut key: Enter)").classes('text-xs')
+    ui.keyboard(on_key=handle_key)
 
 # Main
 
