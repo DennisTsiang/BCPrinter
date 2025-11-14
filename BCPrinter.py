@@ -118,12 +118,12 @@ def root():
             ui.label("Output Barcode:")
             with html.span().style("--nicegui-default-gap: 0; display: flex;").bind_visibility_from(
                     user_input, "value", validate_input):
-                with html.span().style("color: red;"):
-                    ui.label().bind_text_from(user_input, 'value', get_FIN)
-                with html.span().style("color: blue;"):
-                    ui.label().bind_text_from(user_input, 'value', get_year)
-                with html.span().style("color: green"):
-                    ui.label().bind_text_from(user_input, 'value', get_sequence_number)
+                with html.span().classes('text-red-500 hover:bg-yellow-300'):
+                    ui.label().bind_text_from(user_input, 'value', get_FIN).tooltip("Facility Identification Number (FIN)")
+                with html.span().classes('text-blue-500 hover:bg-yellow-300'):
+                    ui.label().bind_text_from(user_input, 'value', get_year).tooltip("Year")
+                with html.span().classes('text-green-500 hover:bg-yellow-300'):
+                    ui.label().bind_text_from(user_input, 'value', get_sequence_number).tooltip("Sequence Number")
             ui.label("Invalid barcode").style("color:red;").bind_visibility_from(
                 user_input, "value", lambda x: x is not None and not len(x) == 0 and not validate_input(x))
     ui.label("ZPL Preview:").style('font-size: 120%')
