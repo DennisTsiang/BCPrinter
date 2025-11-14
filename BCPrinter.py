@@ -2,6 +2,8 @@
 
 from nicegui import html, ui
 import win32print
+import requests
+import base64
 """
 ISBT 128 provides for unique identification of any donation event
 worldwide. It does this by using a 13-character identifier built from three
@@ -21,7 +23,8 @@ These first 13 characters comprise the Donation Identification Number
 """
 
 zpl_code = {'value': ''}
-
+zpl_preview_image_data: dict[str, str] = {'source': ''}
+ui_images: dict[str, ui.image | None] = {'zpl_preview': None}
 
 def strip(text: str) -> str:
     if text is None or len(text) < 13:
@@ -49,9 +52,9 @@ def get_sequence_number(text: str) -> str:
 
 def generate_barcode_zpl(barcode: str) -> str:
     barcode = strip(barcode)
-    zpl = "^XA\n" \
-          "^BY2,2,80\n" \
-          "^FO20,40^BC^{}^FS\n" \
+    zpl = "^XA" \
+          "^BY3,2,100" \
+          "^FO25,40^BC^FD{}^FS" \
           "^XZ".format(barcode)
     return zpl
 
@@ -60,11 +63,29 @@ def validate_input(text: str) -> bool:
     return text is not None and len(strip(text)) >= 13
 
 
-def update_zpl(text: str) -> str:
-    global zpl_code
+def update_zpl(text: str):
+    global zpl_code, ui_images
     zpl = generate_barcode_zpl(text)
     zpl_code['value'] = zpl
-    return zpl
+    if ui_images['zpl_preview'] is not None and validate_input(text):
+        labelary_zpl_preview_image()
+
+
+def labelary_zpl_preview_image():
+    global zpl_code, zpl_preview_image_data, ui_images
+    # adjust print density (12dpmm), label width (2 inches), label height (1 inches), and label index (0) as necessary
+    if not zpl_code['value'] is None and len(zpl_code['value']) > 0:
+        url = 'http://api.labelary.com/v1/printers/12dpmm/labels/2x1/0/'
+        response = requests.post(url, data = zpl_code['value'], stream = True)
+        if response.status_code == 200:
+            base64_image = base64.b64encode(response.content).decode('utf-8')
+            zpl_preview_image_data['source'] = f'data:image/png;base64,{base64_image}'
+            if ui_images['zpl_preview'] is not None:
+                ui_images['zpl_preview'].update()
+        elif response.status_code == 429:
+            ui.notify('Error: Too many requests to Labelary API. Please wait and try again later.')
+        else:
+            ui.notify('Error: ' + response.text)
 
 
 # def open_print_dialog():
@@ -83,15 +104,16 @@ def send_zpl_to_printer(zpl_code, printer_name=None):
             printer_name = win32print.GetDefaultPrinter()
         with open("zpl_output_test.txt", 'w') as f:
             f.write(zpl_code)
-        ui.notification(f'Printed!')
+        ui.notify(f'Printed!')
     except Exception as e:
         ui.notify(f'Print error: {str(e)}', color='negative')
 
 
 def root():
-    user_input = ui.input(placeholder='Original Barcode')
+    global zpl_preview_image_data
+    user_input = ui.input(placeholder='Original Barcode', on_change=lambda e: update_zpl(e.value))
     user_input.props('clearable')
-    with html.section().style('font-size: 200%'):
+    with html.section().style('font-size: 120%'):
         with ui.row():
             ui.label("Output Barcode:")
             with html.span().style("--nicegui-default-gap: 0; display: flex;").bind_visibility_from(
@@ -105,8 +127,9 @@ def root():
             ui.label("Invalid barcode").style("color:red;").bind_visibility_from(
                 user_input, "value", lambda x: x is not None and not len(x) == 0 and not validate_input(x))
     ui.label("ZPL Preview:").style('font-size: 120%')
-    with ui.card().props('flat bordered'):
-        ui.label().style('white-space: pre-wrap').bind_text_from(user_input, 'value', update_zpl)
+    zpl_preview = ui.image().style('width: 400px; height: 200px; border: 1px solid black;')
+    ui_images['zpl_preview'] = zpl_preview
+    zpl_preview.bind_source_from(zpl_preview_image_data)
     printer_select = ui.select(get_printers(),
                                label='Select Printer',
                                value=win32print.GetDefaultPrinter())
@@ -121,6 +144,6 @@ def root():
 
 ui.run(root=root,
        title="Royal Papworth Hospital Barcode Printing Ver (2.00)",
-       window_size=(500, 550),
+       window_size=(500, 605),
        favicon="🖨️",
        reload=False)
