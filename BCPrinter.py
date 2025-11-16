@@ -192,7 +192,8 @@ def root():
                                value=win32print.GetDefaultPrinter())
     printer_select = printer_select_local
     with ui.button(icon="print",
-              on_click=lambda: send_zpl_to_printer(zpl_code['value'], printer_select_local.value)) as print_button:
+                   on_click=lambda: send_zpl_to_printer(zpl_code[
+                       'value'], debug_mode, printer_select_local.value)) as print_button:
         print_button.props("size=xl")
         print_button.bind_enabled_from(user_input, 'value', validate_input)
         ui.tooltip("Print (shortcut key: Enter)").classes('text-xs')
