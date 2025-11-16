@@ -20,7 +20,14 @@ python .\BCPrinter.py
 ## Info for developers
 ### Packaging
 The NiceGUI Python framework bundles a command called `nicegui-pack` for packaging the application into a standalone executable file.
-Run the following to package the app, and the .exe file will be built into the `dist` folder:
+
+A convenience PowerShell script can be found in the repository for bundling the application. You can run the following in the terminal, and the .exe file will be built into the `dist` folder:
+
+```
+.\package.ps1
+```
+
+Alternatively you can run directly the following `nicegui-pack` command to package the app, and the .exe file will be built into the `dist` folder:
 
 ```
 nicegui-pack --onefile --windowed --icon favicon.ico  --name "BCPrinter" .\BCPrinter.py
