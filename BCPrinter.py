@@ -127,7 +127,7 @@ def zebra_print_zpl(zpl_code: str, printer_name: str):
         raise
 
 
-def send_zpl_to_printer(zpl_code, debug=True, printer_name=None):
+def send_zpl_to_printer(zpl_code, debug=True, printer_name=None) -> bool:
     """Send ZPL commands directly to a printer"""
     try:
         # Get default printer if none specified
@@ -140,16 +140,21 @@ def send_zpl_to_printer(zpl_code, debug=True, printer_name=None):
         else:
             zebra_print_zpl(zpl_code, printer_name)
         ui.notify(f'Printed!')
+        return True
     except Exception as e:
         ui.notify(f'Print error: {str(e)}', color='negative')
+        return False
 
 def handle_key_enter():
     global user_input, printer_select
+    success = False
     if user_input is not None and validate_input(user_input.value):
         if printer_select is not None:
-            send_zpl_to_printer(zpl_code['value'], printer_select.value)
+            success = send_zpl_to_printer(zpl_code['value'], printer_select.value)
         else:
-            send_zpl_to_printer(zpl_code['value'])
+            success = send_zpl_to_printer(zpl_code['value'])
+        if success:
+            user_input.set_value('')
 
 def handle_key(event):
     global user_input, printer_select
