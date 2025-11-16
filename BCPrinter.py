@@ -146,11 +146,11 @@ def send_zpl_to_printer(zpl_code, debug=True, printer_name=None) -> bool:
         return False
 
 def handle_key_enter():
-    global user_input, printer_select
+    global user_input, printer_select, debug_mode
     success = False
     if user_input is not None and validate_input(user_input.value):
         if printer_select is not None:
-            success = send_zpl_to_printer(zpl_code['value'], printer_select.value)
+            success = send_zpl_to_printer(zpl_code['value'], debug_mode, printer_select.value)
         else:
             success = send_zpl_to_printer(zpl_code['value'])
         if success:
@@ -202,7 +202,7 @@ def root():
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', action='store_true', help='enable debug mode')
-    return parser.parse_args()
+    return parser.parse_known_args()[0]
 
 # Main
 args = parse_args()
