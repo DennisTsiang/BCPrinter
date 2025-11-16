@@ -93,8 +93,6 @@ def labelary_zpl_preview_image():
             ui.notify('Error: ' + response.text)
 
 
-# def open_print_dialog():
-#     win32api.ShellExecute(0, "print", filename, '/d:"%s"' % win32print.GetDefaultPrinter(), ".", 0)
 def get_printers():
     """Get list of available printers"""
     printers = [printer[2] for printer in win32print.EnumPrinters(2)]
