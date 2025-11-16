@@ -203,4 +203,4 @@ ui.run(root=root,
        title="Royal Papworth Hospital Barcode Printing Ver (2.00)",
        window_size=window_size,
        favicon="🖨️",
-       reload=not debug_mode)
+       reload=debug_mode)
