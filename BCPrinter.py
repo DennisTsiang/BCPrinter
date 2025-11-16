@@ -5,6 +5,7 @@ import win32print
 import requests
 import base64
 import argparse
+import threading
 """
 ISBT 128 provides for unique identification of any donation event
 worldwide. It does this by using a 13-character identifier built from three
@@ -30,6 +31,8 @@ ui_images: dict[str, ui.image | None] = {'zpl_preview': None}
 user_input: ui.input | None = None
 printer_select: ui.select | None = None
 debug_mode: bool = False
+debounce_timer: threading.Timer | None = None
+debounce_delay: float = 0.5  # seconds
 
 def strip(text: str) -> str:
     if text is None or len(text) < 13:
@@ -69,11 +72,15 @@ def validate_input(text: str) -> bool:
 
 
 def update_zpl(text: str):
-    global zpl_code, ui_images
+    global zpl_code, ui_images, debounce_timer
+    if debounce_timer is not None:
+        debounce_timer.cancel()
+
     zpl = generate_barcode_zpl(text)
     zpl_code['value'] = zpl
     if ui_images['zpl_preview'] is not None and validate_input(text):
-        labelary_zpl_preview_image()
+        debounce_timer = threading.Timer(debounce_delay, labelary_zpl_preview_image)
+        debounce_timer.start()
 
 
 def labelary_zpl_preview_image():
