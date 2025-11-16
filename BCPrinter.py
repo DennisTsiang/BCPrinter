@@ -4,6 +4,7 @@ from nicegui import html, ui
 import win32print
 import requests
 import base64
+import argparse
 """
 ISBT 128 provides for unique identification of any donation event
 worldwide. It does this by using a 13-character identifier built from three
@@ -22,11 +23,13 @@ These first 13 characters comprise the Donation Identification Number
 (DIN)
 """
 
+# Global Variables
 zpl_code = {'value': ''}
 zpl_preview_image_data: dict[str, str] = {'source': ''}
 ui_images: dict[str, ui.image | None] = {'zpl_preview': None}
 user_input: ui.input | None = None
 printer_select: ui.select | None = None
+debug_mode: bool = False
 
 def strip(text: str) -> str:
     if text is None or len(text) < 13:
@@ -159,10 +162,21 @@ def root():
         ui.tooltip("Print (shortcut key: Enter)").classes('text-xs')
     ui.keyboard(on_key=handle_key)
 
-# Main
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--debug', action='store_true', help='enable debug mode')
+    return parser.parse_args()
 
+# Main
+args = parse_args()
+if args.debug:
+    debug_mode = True
+
+window_size=(500, 605)
+if debug_mode:
+    window_size = None
 ui.run(root=root,
        title="Royal Papworth Hospital Barcode Printing Ver (2.00)",
-       window_size=(500, 605),
+       window_size=window_size,
        favicon="🖨️",
-       reload=False)
+       reload=not debug_mode)
