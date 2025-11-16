@@ -100,16 +100,40 @@ def get_printers():
     printers = [printer[2] for printer in win32print.EnumPrinters(2)]
     return printers
 
+def zebra_print_zpl(zpl_code: str, printer_name: str):
+    """Send ZPL commands to Zebra printer using Win32 Print Spooler API"""
+    try:
+        # Open a handle to the printer
+        hPrinter = win32print.OpenPrinter(printer_name)
+        try:
+            # Start a print job
+            win32print.StartDocPrinter(hPrinter, 1, ("ZPL Print Job", None, "RAW"))
+            try:
+                # Start a page and write the ZPL code
+                # These steps would typically be repeated for multiple pages
+                win32print.StartPagePrinter(hPrinter)
+                win32print.WritePrinter(hPrinter, zpl_code.encode('utf-8'))
+                win32print.EndPagePrinter(hPrinter)
+            finally:
+                win32print.EndDocPrinter(hPrinter)
+        finally:
+            win32print.ClosePrinter(hPrinter)
+    except Exception as e:
+        raise
 
-def send_zpl_to_printer(zpl_code, printer_name=None):
+
+def send_zpl_to_printer(zpl_code, debug=True, printer_name=None):
     """Send ZPL commands directly to a printer"""
     try:
         # Get default printer if none specified
         if printer_name is None:
             printer_name = win32print.GetDefaultPrinter()
-        filename = f"{printer_name}.txt"
-        with open(filename, 'w') as f:
-            f.write(zpl_code)
+        if debug:
+            filename = f"{printer_name}.txt"
+            with open(filename, 'w') as f:
+                f.write(zpl_code)
+        else:
+            zebra_print_zpl(zpl_code, printer_name)
         ui.notify(f'Printed!')
     except Exception as e:
         ui.notify(f'Print error: {str(e)}', color='negative')
