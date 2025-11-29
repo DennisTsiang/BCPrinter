@@ -3,11 +3,18 @@
 This is an unofficial Windows application made to convert barcode serials into the ISTB 128 standard format for Blood Products for the Royal Papworth Hospital Blood Transfusion department, UK. This can then be sent to a Zebra label printer.
 
 ## Developer Dependencies
+
+The dependencies can be installed with the requirements.txt file via the following command:
+```
+pip install -r requirements.txt
+```
+
 * Python (3.10+)
 * Python modules:
     * pywin32
     * nicegui (3.00+)
     * requests
+    * pywebview
 
 ## Usage
 See the GitHub releases page for the latest downloaded executable files. The .exe files avoids having to install any dependencies.
