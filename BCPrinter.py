@@ -33,6 +33,7 @@ printer_select: ui.select | None = None
 debug_mode: bool = False
 debounce_timer: threading.Timer | None = None
 debounce_delay: float = 0.5  # seconds
+output_mode_selection: int = 1
 
 def strip(text: str) -> str:
     if text is None or len(text) < 13:
@@ -40,7 +41,10 @@ def strip(text: str) -> str:
     stripped_string = text
     if stripped_string[0] == '=':
         stripped_string = stripped_string[1:]
-    return stripped_string[:13]
+    if output_mode_selection == 1:
+        return stripped_string[:13]
+    else:
+        return stripped_string[:15]
 
 
 def get_FIN(text: str) -> str:
@@ -57,18 +61,43 @@ def get_sequence_number(text: str) -> str:
     output = strip(text)
     return output[7:]
 
+def calc_human_readable_check_character(characters: str) -> str:
+    """Calculate the human readable check character for ISBT 128 barcode"""
+    table = {60: "0", 61: "1", 62: "2", 63: "3", 64: "4", 65: "5", 66: "6", 67: "7", 68: "8", 69: "9",
+             70: "A", 71: "B", 72: "C", 73: "D", 74: "E", 75: "F", 76: "G", 77: "H", 78: "I", 79: "J",
+             80: "K", 81: "L", 82: "M", 83: "N", 84: "O", 85: "P", 86: "Q", 87: "R", 88: "S", 89: "T",
+             90: "U", 91: "V", 92: "W", 93: "X", 94: "Y", 95: "Z", 96: "*"}
+    digits = int(characters)
+    return table[digits]
+
+def format_barcode_string(barcode: str) -> str:
+    barcode = strip(barcode)
+    return "{} {} {} {}".format(barcode[:4], barcode[4:7], barcode[7:10], barcode[10:])
 
 def generate_barcode_zpl(barcode: str) -> str:
     barcode = strip(barcode)
     zpl = "^XA" \
-          "^BY3,2,100" \
-          "^FO25,40^BC^FD{}^FS" \
-          "^XZ".format(barcode)
+          "^LH30,40" \
+          "^BY2,2,100" \
+          "^FO0,0^BC,,N^FD{}^FS".format(barcode)
+    if output_mode_selection == 2:
+        zpl += ("^FO0,110^A0,40^FD{}  {}^FS" \
+                "^FO300,105^GB40,40,2^FS").format(
+                    format_barcode_string(barcode[:-2]),
+                    calc_human_readable_check_character(barcode[-2:]))
+    else:
+        zpl += "^FO0,110^A0,40^FD{}^FS".format(format_barcode_string(barcode))
+    zpl += "^XZ"
     return zpl
 
 
 def validate_input(text: str) -> bool:
-    return text is not None and len(strip(text)) >= 13
+    if text is None:
+        return False
+    if output_mode_selection == 1:
+        return len(strip(text)) >= 13
+    else:
+        return len(strip(text)) >= 15 and text[-2:].isdigit() and int(text[-2:]) >= 20
 
 
 def update_zpl(text: str):
@@ -76,9 +105,9 @@ def update_zpl(text: str):
     if debounce_timer is not None:
         debounce_timer.cancel()
 
-    zpl = generate_barcode_zpl(text)
-    zpl_code['value'] = zpl
     if ui_images['zpl_preview'] is not None and validate_input(text):
+        zpl = generate_barcode_zpl(text)
+        zpl_code['value'] = zpl
         debounce_timer = threading.Timer(debounce_delay, labelary_zpl_preview_image)
         debounce_timer.start()
 
@@ -87,7 +116,7 @@ def labelary_zpl_preview_image():
     global zpl_code, zpl_preview_image_data, ui_images
     # adjust print density (12dpmm), label width (2 inches), label height (1 inches), and label index (0) as necessary
     if not zpl_code['value'] is None and len(zpl_code['value']) > 0:
-        url = 'http://api.labelary.com/v1/printers/12dpmm/labels/2x1/0/'
+        url = 'http://api.labelary.com/v1/printers/8dpmm/labels/3x1.5/0/'
         response = requests.post(url, data = zpl_code['value'], stream = True)
         if response.status_code == 200:
             base64_image = base64.b64encode(response.content).decode('utf-8')
@@ -162,14 +191,23 @@ def handle_key(event):
         if event.key.enter:
             handle_key_enter()
 
+
+def handle_output_mode_change(text: str):
+    global output_mode_selection
+    output_mode_selection = text
+
 def root():
-    global zpl_preview_image_data, user_input, printer_select
-    user_input = ui.input(
-        placeholder='Original Barcode',
+    global zpl_preview_image_data, user_input, printer_select, output_mode_selection
+    with ui.input(
+        placeholder='Unit Number',
         on_change=lambda e: update_zpl(e.value),
-        validation={'Invalid Barcode': lambda x: x is None or len(x) == 0 or validate_input(x)})
-    user_input.on('keydown.enter', handle_key_enter)
-    user_input.props('clearable')
+        validation={'Invalid Barcode': lambda x: x is None or len(x) == 0 or validate_input(x)}) as user_input:
+        user_input.on('keydown.enter', handle_key_enter)
+        user_input.props('clearable')
+        user_input.classes('text-xl')
+        ui.icon("edit").props('size=lg')
+    output_mode = ui.radio({1: "Cross match", 2: "Full unit number"}, value=1,
+                        on_change=lambda e: handle_output_mode_change(e.value))
     with html.section().style('font-size: 120%'):
         with ui.row():
             ui.label("Output Barcode:")
@@ -209,7 +247,7 @@ args = parse_args()
 if args.debug:
     debug_mode = True
 
-window_size=(500, 605)
+window_size=(500, 720)
 if debug_mode:
     window_size = None
 ui.run(root=root,
