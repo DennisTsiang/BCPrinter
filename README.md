@@ -2,6 +2,8 @@
 
 This is an unofficial Windows application made to convert barcode serials into the ISTB 128 standard format for Blood Products for the Royal Papworth Hospital Blood Transfusion department, UK. This can then be sent to a Zebra label printer.
 
+![Demo](./readme_assets/demo.webp)
+
 ## Developer Dependencies
 
 The dependencies can be installed with the requirements.txt file via the following command:
