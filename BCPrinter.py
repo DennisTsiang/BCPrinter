@@ -284,7 +284,7 @@ def root():
                                     on_change=lambda x: update_label_preview_height(x.value)).props(
                                         "type=number dense").classes('w-20')
 
-    zpl_preview = ui.image().style('width: 400px; height: 200px; border: 1px solid black;')
+    zpl_preview = ui.image().style('width: 300px; height: auto; border: 1px solid black;')
     ui_images['zpl_preview'] = zpl_preview
     zpl_preview.bind_source_from(zpl_preview_image_data)
     printer_select_local: ui.select = ui.select(get_printers(),
