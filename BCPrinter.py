@@ -34,6 +34,7 @@ debug_mode: bool = False
 debounce_timer: threading.Timer | None = None
 debounce_delay: float = 0.5  # seconds
 output_mode_selection: int = 1
+check_characters_span: ui.label | None = None
 
 def strip(text: str) -> str:
     if text is None or len(text) < 13:
@@ -59,7 +60,16 @@ def get_year(text: str) -> str:
 
 def get_sequence_number(text: str) -> str:
     output = strip(text)
-    return output[7:]
+    if len(output) < 13:
+        return output[7:]
+    return output[7:13]
+
+def get_check_characters(text: str) -> str:
+    output = strip(text)
+    if len(output) >= 15:
+        return output[13:15]
+    else:
+        return ""
 
 def calc_human_readable_check_character(characters: str) -> str:
     """Calculate the human readable check character for ISBT 128 barcode"""
@@ -192,12 +202,16 @@ def handle_key(event):
             handle_key_enter()
 
 
-def handle_output_mode_change(text: str):
-    global output_mode_selection
+def handle_output_mode_change(text: int):
+    global output_mode_selection, user_input, check_characters_span
     output_mode_selection = text
+    if check_characters_span is not None:
+        check_characters_span.set_text(
+            get_check_characters(user_input.value if user_input is not None else ''))
+    update_zpl(user_input.value if user_input is not None else '')
 
 def root():
-    global zpl_preview_image_data, user_input, printer_select, output_mode_selection
+    global zpl_preview_image_data, user_input, printer_select, output_mode_selection, check_characters_span
     with ui.input(
         placeholder='Unit Number',
         on_change=lambda e: update_zpl(e.value),
@@ -219,6 +233,10 @@ def root():
                     ui.label().bind_text_from(user_input, 'value', get_year).tooltip("Year")
                 with html.span().classes('text-green-500 hover:bg-yellow-300'):
                     ui.label().bind_text_from(user_input, 'value', get_sequence_number).tooltip("Sequence Number")
+                with html.span().classes('text-purple-500 hover:bg-yellow-300'):
+                    check_characters_span = ui.label().bind_visibility_from(
+                        output_mode, 'value', lambda x: x == 2).bind_text_from(
+                            user_input, 'value', get_check_characters).tooltip("Check Characters")
             ui.label("Invalid barcode").style("color:red;").bind_visibility_from(
                 user_input, "value", lambda x: x is not None and not len(x) == 0 and not validate_input(x))
     ui.label("Label Preview:").style('font-size: 120%')
