@@ -217,7 +217,7 @@ def root():
         on_change=lambda e: update_zpl(e.value),
         validation={'Invalid Barcode': lambda x: x is None or len(x) == 0 or validate_input(x)}) as user_input:
         user_input.on('keydown.enter', handle_key_enter)
-        user_input.props('clearable')
+        user_input.props('clearable autofocus')
         user_input.classes('text-xl')
         ui.icon("edit").props('size=lg')
     output_mode = ui.radio({1: "Cross match", 2: "Full unit number"}, value=1,
