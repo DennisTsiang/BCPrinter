@@ -358,7 +358,7 @@ args = parse_args()
 if args.debug:
     debug_mode = True
 
-window_size=(500, 740)
+window_size=(500, 760)
 if debug_mode:
     window_size = None
 ui.run(root=root,
