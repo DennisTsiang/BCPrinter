@@ -17,6 +17,7 @@ pip install -r requirements.txt
     * nicegui (3.00+)
     * requests
     * pywebview
+    * pyinstaller
 
 ## Usage
 See the GitHub releases page for the latest downloaded executable files. The .exe files avoids having to install any dependencies.
