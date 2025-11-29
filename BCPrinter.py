@@ -31,13 +31,16 @@ ui_images: dict[str, ui.image | None] = {'zpl_preview': None}
 user_input: ui.input | None = None
 printer_select: ui.select | None = None
 debug_mode: bool = False
-debounce_timer: threading.Timer | None = None
-debounce_delay: float = 0.5  # seconds
+debounce_timer: ui.timer | None = None
+debounce_delay: float = 1.0  # seconds
 output_mode_selection: int = 1
 dpmm: str = "8"
 width: str = "3"
 height: str = "1.5"
 check_characters_span: ui.label | None = None
+left_padding: str = "30"
+top_padding: str = "40"
+preview_debounce_timer: ui.timer | None = None
 
 def strip(text: str) -> str:
     if text is None or len(text) < 13:
@@ -90,9 +93,9 @@ def format_barcode_string(barcode: str) -> str:
 def generate_barcode_zpl(barcode: str) -> str:
     barcode = strip(barcode)
     zpl = "^XA" \
-          "^LH30,40" \
+          "^LH{},{}" \
           "^BY2,2,100" \
-          "^FO0,0^BC,,N^FD{}^FS".format(barcode)
+          "^FO0,0^BC,,N^FD{}^FS".format(left_padding, top_padding, barcode)
     if output_mode_selection == 2:
         zpl += ("^FO0,110^A0,40^FD{}  {}^FS" \
                 "^FO300,105^GB40,40,2^FS").format(
@@ -121,23 +124,58 @@ def update_zpl(text: str):
     if ui_images['zpl_preview'] is not None and validate_input(text):
         zpl = generate_barcode_zpl(text)
         zpl_code['value'] = zpl
-        debounce_timer = threading.Timer(debounce_delay, labelary_zpl_preview_image)
-        debounce_timer.start()
+        debounce_timer = ui.timer(debounce_delay, labelary_zpl_preview_image, once=True)
+
 
 def update_label_preview_dpmm(value: str):
-    global dpmm
-    dpmm = value
-    labelary_zpl_preview_image()
+    global dpmm, preview_debounce_timer
+    if value.isdigit():
+        dpmm = value
+    if preview_debounce_timer is not None:
+        preview_debounce_timer.cancel()
+    preview_debounce_timer = ui.timer(debounce_delay, labelary_zpl_preview_image, once=True)
+
 
 def update_label_preview_width(value: str):
-    global width
-    width = value
-    labelary_zpl_preview_image()
+    global width, preview_debounce_timer
+    if value.isdigit():
+        width = value
+    if preview_debounce_timer is not None:
+        preview_debounce_timer.cancel()
+    preview_debounce_timer = ui.timer(debounce_delay, labelary_zpl_preview_image, once=True)
+
 
 def update_label_preview_height(value: str):
-    global height
-    height = value
-    labelary_zpl_preview_image()
+    global height, preview_debounce_timer
+    if value.isdigit():
+        height = value
+    if preview_debounce_timer is not None:
+        preview_debounce_timer.cancel()
+    preview_debounce_timer = ui.timer(debounce_delay, labelary_zpl_preview_image, once=True)
+
+
+def update_left_padding(value: str):
+    global left_padding, preview_debounce_timer
+    if value.isdigit():
+        left_padding = value
+    if preview_debounce_timer is not None:
+        preview_debounce_timer.cancel()
+    preview_debounce_timer = ui.timer(debounce_delay,
+                                      lambda: update_zpl(user_input.value
+                                                         if user_input is not None else ''),
+                                      once=True)
+
+
+def update_right_padding(value: str):
+    global top_padding, preview_debounce_timer
+    if value.isdigit():
+        top_padding = value
+    if preview_debounce_timer is not None:
+        preview_debounce_timer.cancel()
+    preview_debounce_timer = ui.timer(debounce_delay,
+                                      lambda: update_zpl(user_input.value
+                                                         if user_input is not None else ''),
+                                      once=True)
 
 def labelary_zpl_preview_image():
     global zpl_code, zpl_preview_image_data, ui_images
@@ -268,22 +306,33 @@ def root():
     ''')
     with ui.expansion("Preview settings", icon="settings").classes('text-xs nicegui-expansion').props('dense'):
         with html.span().style('display: flex; gap: 10px; align-items: center;'):
-            dpmm = ui.input(label="dpmm",
-                            placeholder="8",
-                            value="8",
-                            on_change=lambda x: update_label_preview_dpmm(x.value)).props(
-                                "type=number dense").classes('w-10')
-            label_width = ui.input(label="width (inches)",
-                                   placeholder="3",
-                                   value="3",
-                                   on_change=lambda x: update_label_preview_width(x.value)).props(
-                                       "type=number dense").classes('w-20')
-            label_height = ui.input(label="height (inches)",
-                                    placeholder="1.5",
-                                    value="1.5",
-                                    on_change=lambda x: update_label_preview_height(x.value)).props(
-                                        "type=number dense").classes('w-20')
-
+            ui.input(label="dpmm",
+                     placeholder="8",
+                     value="8",
+                     on_change=lambda x: update_label_preview_dpmm(x.value)).props(
+                         "type=number dense").classes('w-10')
+            ui.input(label="width (inches)",
+                     placeholder="3",
+                     value="3",
+                     on_change=lambda x: update_label_preview_width(x.value)).props(
+                         "type=number dense").classes('w-20')
+            ui.input(label="height (inches)",
+                     placeholder="1.5",
+                     value="1.5",
+                     on_change=lambda x: update_label_preview_height(x.value)).props(
+                         "type=number dense").classes('w-20')
+    with ui.expansion("Print settings", icon="settings").classes('text-xs nicegui-expansion').props('dense'):
+        with html.span().style('display: flex; gap: 10px; align-items: center;'):
+            ui.input(label="Left padding (dpmm)",
+                     placeholder="30",
+                     value="30",
+                     on_change=lambda x: update_left_padding(x.value)).props(
+                         "type=number dense").classes('w-30')
+            ui.input(label="Top padding (dpmm)",
+                     placeholder="40",
+                     value="40",
+                     on_change=lambda x: update_right_padding(x.value)).props(
+                         "type=number dense").classes('w-30')
     zpl_preview = ui.image().style('width: 300px; height: auto; border: 1px solid black;')
     ui_images['zpl_preview'] = zpl_preview
     zpl_preview.bind_source_from(zpl_preview_image_data)
