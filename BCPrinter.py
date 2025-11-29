@@ -34,6 +34,9 @@ debug_mode: bool = False
 debounce_timer: threading.Timer | None = None
 debounce_delay: float = 0.5  # seconds
 output_mode_selection: int = 1
+dpmm: str = "8"
+width: str = "3"
+height: str = "1.5"
 check_characters_span: ui.label | None = None
 
 def strip(text: str) -> str:
@@ -121,12 +124,26 @@ def update_zpl(text: str):
         debounce_timer = threading.Timer(debounce_delay, labelary_zpl_preview_image)
         debounce_timer.start()
 
+def update_label_preview_dpmm(value: str):
+    global dpmm
+    dpmm = value
+    labelary_zpl_preview_image()
+
+def update_label_preview_width(value: str):
+    global width
+    width = value
+    labelary_zpl_preview_image()
+
+def update_label_preview_height(value: str):
+    global height
+    height = value
+    labelary_zpl_preview_image()
 
 def labelary_zpl_preview_image():
     global zpl_code, zpl_preview_image_data, ui_images
     # adjust print density (12dpmm), label width (2 inches), label height (1 inches), and label index (0) as necessary
     if not zpl_code['value'] is None and len(zpl_code['value']) > 0:
-        url = 'http://api.labelary.com/v1/printers/8dpmm/labels/3x1.5/0/'
+        url = 'http://api.labelary.com/v1/printers/{}dpmm/labels/{}x{}/0/'.format(dpmm, width, height)
         response = requests.post(url, data = zpl_code['value'], stream = True)
         if response.status_code == 200:
             base64_image = base64.b64encode(response.content).decode('utf-8')
@@ -240,6 +257,33 @@ def root():
             ui.label("Invalid barcode").style("color:red;").bind_visibility_from(
                 user_input, "value", lambda x: x is not None and not len(x) == 0 and not validate_input(x))
     ui.label("Label Preview:").style('font-size: 120%')
+    ui.add_css('''
+    .nicegui-expansion .q-item {
+        padding-left: 0px !important;
+    }
+    .nicegui-expansion .q-item__section--avatar{
+        min-width: fit-content !important;
+        padding-right: 5px !important;
+    } 
+    ''')
+    with ui.expansion("Preview settings", icon="settings").classes('text-xs nicegui-expansion').props('dense'):
+        with html.span().style('display: flex; gap: 10px; align-items: center;'):
+            dpmm = ui.input(label="dpmm",
+                            placeholder="8",
+                            value="8",
+                            on_change=lambda x: update_label_preview_dpmm(x.value)).props(
+                                "type=number dense").classes('w-10')
+            label_width = ui.input(label="width (inches)",
+                                   placeholder="3",
+                                   value="3",
+                                   on_change=lambda x: update_label_preview_width(x.value)).props(
+                                       "type=number dense").classes('w-20')
+            label_height = ui.input(label="height (inches)",
+                                    placeholder="1.5",
+                                    value="1.5",
+                                    on_change=lambda x: update_label_preview_height(x.value)).props(
+                                        "type=number dense").classes('w-20')
+
     zpl_preview = ui.image().style('width: 400px; height: 200px; border: 1px solid black;')
     ui_images['zpl_preview'] = zpl_preview
     zpl_preview.bind_source_from(zpl_preview_image_data)
@@ -265,7 +309,7 @@ args = parse_args()
 if args.debug:
     debug_mode = True
 
-window_size=(500, 720)
+window_size=(500, 740)
 if debug_mode:
     window_size = None
 ui.run(root=root,
