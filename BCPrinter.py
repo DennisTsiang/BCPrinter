@@ -98,7 +98,7 @@ def generate_barcode_zpl(barcode: str) -> str:
           "^FO0,0^BC,,N^FD{}^FS".format(left_padding, top_padding, barcode)
     if output_mode_selection == 2:
         zpl += ("^FO0,110^A0,40^FD{}  {}^FS" \
-                "^FO300,105^GB40,40,2^FS").format(
+                "^FO300,105^GB55,40,2^FS").format(
                     format_barcode_string(barcode[:-2]),
                     calc_human_readable_check_character(barcode[-2:]))
     else:
@@ -358,7 +358,7 @@ args = parse_args()
 if args.debug:
     debug_mode = True
 
-window_size=(500, 760)
+window_size=(500, 780)
 if debug_mode:
     window_size = None
 ui.run(root=root,
