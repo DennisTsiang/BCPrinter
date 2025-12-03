@@ -41,6 +41,7 @@ check_characters_span: ui.label | None = None
 left_padding: str = "30"
 top_padding: str = "40"
 preview_debounce_timer: ui.timer | None = None
+skip_printing: bool = False
 
 def strip(text: str) -> str:
     if text is None or len(text) < 13:
@@ -227,7 +228,7 @@ def send_zpl_to_printer(zpl_code, debug=True, printer_name=None) -> bool:
         # Get default printer if none specified
         if printer_name is None:
             printer_name = win32print.GetDefaultPrinter()
-        if debug:
+        if debug or skip_printing:
             filename = f"{printer_name}.txt"
             with open(filename, 'w') as f:
                 f.write(zpl_code)
@@ -351,12 +352,19 @@ def root():
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', action='store_true', help='enable debug mode')
+    parser.add_argument(
+        '--skip-printing',
+        action='store_true',
+        help='skip printing (outputs to file instead). Enabled in debug mode automatically.')
     return parser.parse_known_args()[0]
 
 # Main
 args = parse_args()
 if args.debug:
     debug_mode = True
+    skip_printing = True
+if args.skip_printing:
+    skip_printing = True
 
 window_size=(500, 780)
 if debug_mode:
