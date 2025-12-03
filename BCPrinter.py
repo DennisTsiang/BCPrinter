@@ -268,6 +268,7 @@ def handle_output_mode_change(text: int):
 
 def root():
     global zpl_preview_image_data, user_input, printer_select, output_mode_selection, check_characters_span
+    ui.add_head_html('<link href="https://unpkg.com/eva-icons@1.1.3/style/eva-icons.css" rel="stylesheet" />')
     with ui.input(
         placeholder='Unit Number',
         on_change=lambda e: update_zpl(e.value),
@@ -348,6 +349,8 @@ def root():
         print_button.bind_enabled_from(user_input, 'value', validate_input)
         ui.tooltip("Print (shortcut key: Enter)").classes('text-xs')
     ui.keyboard(on_key=handle_key)
+    ui.icon(name="eva-github", size="sm").classes("fixed bottom-1 right-1").style("cursor: pointer;").on(
+        "click", lambda: ui.navigate.to("https://github.com/dennistsiang/bcprinter", new_tab=True))
 
 def parse_args():
     parser = argparse.ArgumentParser()
