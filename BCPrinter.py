@@ -349,6 +349,8 @@ def root():
         print_button.bind_enabled_from(user_input, 'value', validate_input)
         ui.tooltip("Print (shortcut key: Enter)").classes('text-xs')
     ui.keyboard(on_key=handle_key)
+    dark = ui.dark_mode()
+    ui.switch('Dark Mode').classes("fixed bottom-5 right-1").bind_value(dark)
     ui.icon(name="eva-github", size="sm").classes("fixed bottom-1 right-1").style("cursor: pointer;").on(
         "click", lambda: ui.navigate.to("https://github.com/dennistsiang/bcprinter", new_tab=True))
 
