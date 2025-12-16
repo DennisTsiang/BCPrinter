@@ -411,7 +411,7 @@ window_size=(500, 780)
 if debug_mode:
     window_size = None
 ui.run(root=root,
-       title="Royal Papworth Hospital Barcode Printing Ver (2.1.2)",
+       title="Royal Papworth Hospital Barcode Printing Ver (2.2.0)",
        window_size=window_size,
        favicon="🖨️",
        reload=debug_mode)
