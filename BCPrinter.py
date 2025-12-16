@@ -178,12 +178,25 @@ def update_right_padding(value: str):
                                                          if user_input is not None else ''),
                                       once=True)
 
+def check_labelary_connection() -> bool:
+    """Check connection to Labelary API"""
+    url = 'http://api.labelary.com/v1/printers/8dpmm/labels/4x2/0/'
+    try:
+        requests.post(url, data='^XA^FO0,0^A0,30^FDTest^FS^XZ', stream=True, timeout=5)
+        return True
+    except requests.exceptions.RequestException:
+        return False
+
 def labelary_zpl_preview_image():
     global zpl_code, zpl_preview_image_data, ui_images
     # adjust print density (12dpmm), label width (2 inches), label height (1 inches), and label index (0) as necessary
     if not zpl_code['value'] is None and len(zpl_code['value']) > 0:
         url = 'http://api.labelary.com/v1/printers/{}dpmm/labels/{}x{}/0/'.format(dpmm, width, height)
-        response = requests.post(url, data = zpl_code['value'], stream = True)
+        response = None
+        try:
+            response = requests.post(url, data = zpl_code['value'], stream = True, timeout=5)
+        except requests.exceptions.RequestException:
+            return
         if response.status_code == 200:
             base64_image = base64.b64encode(response.content).decode('utf-8')
             zpl_preview_image_data['source'] = f'data:image/png;base64,{base64_image}'
@@ -313,7 +326,6 @@ def root():
                             user_input, 'value', get_check_characters).tooltip("Check Characters")
             ui.label("Invalid barcode").style("color:red;").bind_visibility_from(
                 user_input, "value", lambda x: x is not None and not len(x) == 0 and not validate_input(x))
-    ui.label("Label Preview:").style('font-size: 120%')
     ui.add_css('''
     .nicegui-expansion .q-item {
         padding-left: 0px !important;
@@ -323,23 +335,29 @@ def root():
         padding-right: 5px !important;
     } 
     ''')
-    with ui.expansion("Preview settings", icon="settings").classes('text-xs nicegui-expansion').props('dense'):
-        with html.span().style('display: flex; gap: 10px; align-items: center;'):
-            ui.input(label="dpmm",
-                     placeholder="8",
-                     value="8",
-                     on_change=lambda x: update_label_preview_dpmm(x.value)).props(
-                         "type=number dense").classes('w-10')
-            ui.input(label="width (inches)",
-                     placeholder="3",
-                     value="3",
-                     on_change=lambda x: update_label_preview_width(x.value)).props(
-                         "type=number dense").classes('w-20')
-            ui.input(label="height (inches)",
-                     placeholder="1.5",
-                     value="1.5",
-                     on_change=lambda x: update_label_preview_height(x.value)).props(
-                         "type=number dense").classes('w-20')
+    has_connection = check_labelary_connection()
+    if has_connection:
+        ui.label("Label Preview:").style('font-size: 120%')
+        with ui.expansion("Preview settings", icon="settings").classes('text-xs nicegui-expansion').props('dense'):
+            with html.span().style('display: flex; gap: 10px; align-items: center;'):
+                ui.input(label="dpmm",
+                        placeholder="8",
+                        value="8",
+                        on_change=lambda x: update_label_preview_dpmm(x.value)).props(
+                            "type=number dense").classes('w-10')
+                ui.input(label="width (inches)",
+                        placeholder="3",
+                        value="3",
+                        on_change=lambda x: update_label_preview_width(x.value)).props(
+                            "type=number dense").classes('w-20')
+                ui.input(label="height (inches)",
+                        placeholder="1.5",
+                        value="1.5",
+                        on_change=lambda x: update_label_preview_height(x.value)).props(
+                            "type=number dense").classes('w-20')
+        zpl_preview = ui.image().style('width: 300px; height: auto; border: 1px solid black;')
+        ui_images['zpl_preview'] = zpl_preview
+        zpl_preview.bind_source_from(zpl_preview_image_data)
     with ui.expansion("Print settings", icon="settings").classes('text-xs nicegui-expansion').props('dense'):
         with html.span().style('display: flex; gap: 10px; align-items: center;'):
             ui.input(label="Left padding (dpmm)",
@@ -352,9 +370,6 @@ def root():
                      value="40",
                      on_change=lambda x: update_right_padding(x.value)).props(
                          "type=number dense").classes('w-30')
-    zpl_preview = ui.image().style('width: 300px; height: auto; border: 1px solid black;')
-    ui_images['zpl_preview'] = zpl_preview
-    zpl_preview.bind_source_from(zpl_preview_image_data)
     printers = get_printers()
     default = get_default_printer()
     if default is not None and default not in printers:
