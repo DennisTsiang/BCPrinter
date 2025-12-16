@@ -195,9 +195,23 @@ def labelary_zpl_preview_image():
             ui.notify('Error: ' + response.text)
 
 
+def get_default_printer():
+    try:
+        return win32print.GetDefaultPrinter()
+    except Exception:
+        return None
+
 def get_printers():
     """Get list of available printers"""
-    printers = [printer[2] for printer in win32print.EnumPrinters(2)]
+    # When Name is NULL, setting Flags to PRINTER_ENUM_LOCAL | PRINTER_ENUM_CONNECTIONS enumerates
+    # printers that are installed on the local machine. These printers include those that are
+    # physically attached to the local machine as well as remote printers to which it has a network connection.
+    flags = win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS
+    printers = []
+    try:
+        printers = [printer[2] for printer in win32print.EnumPrinters(flags)]
+    except Exception:
+        pass
     return printers
 
 def zebra_print_zpl(zpl_code: str, printer_name: str):
@@ -227,7 +241,10 @@ def send_zpl_to_printer(zpl_code, debug=True, printer_name=None) -> bool:
     try:
         # Get default printer if none specified
         if printer_name is None:
-            printer_name = win32print.GetDefaultPrinter()
+            printer_name = get_default_printer()
+            if printer_name is None:
+                ui.notify("Please select a printer!", color='negative')
+                return False
         if debug or skip_printing:
             filename = f"{printer_name}.txt"
             with open(filename, 'w') as f:
@@ -338,9 +355,13 @@ def root():
     zpl_preview = ui.image().style('width: 300px; height: auto; border: 1px solid black;')
     ui_images['zpl_preview'] = zpl_preview
     zpl_preview.bind_source_from(zpl_preview_image_data)
-    printer_select_local: ui.select = ui.select(get_printers(),
+    printers = get_printers()
+    default = get_default_printer()
+    if default is not None and default not in printers:
+        printers.insert(0, default)
+    printer_select_local: ui.select = ui.select(printers,
                                label='Select Printer',
-                               value=win32print.GetDefaultPrinter())
+                               value=default)
     printer_select = printer_select_local
     with ui.button(icon="print",
                    on_click=lambda: send_zpl_to_printer(zpl_code[
@@ -375,7 +396,7 @@ window_size=(500, 780)
 if debug_mode:
     window_size = None
 ui.run(root=root,
-       title="Royal Papworth Hospital Barcode Printing Ver (2.1.1)",
+       title="Royal Papworth Hospital Barcode Printing Ver (2.1.2)",
        window_size=window_size,
        favicon="🖨️",
        reload=debug_mode)
