@@ -42,6 +42,7 @@ left_padding: str = "30"
 top_padding: str = "40"
 preview_debounce_timer: ui.timer | None = None
 skip_printing: bool = False
+browser_mode: bool = False
 
 def strip(text: str) -> str:
     if text is None or len(text) < 13:
@@ -397,6 +398,7 @@ def parse_args():
         '--skip-printing',
         action='store_true',
         help='skip printing (outputs to file instead). Enabled in debug mode automatically.')
+    parser.add_argument('-b', "--browser", action='store_true', help='launch in browser instead of desktop app')
     return parser.parse_known_args()[0]
 
 # Main
@@ -406,9 +408,11 @@ if args.debug:
     skip_printing = True
 if args.skip_printing:
     skip_printing = True
+if args.browser:
+    browser_mode = True
 
 window_size=(500, 780)
-if debug_mode:
+if debug_mode or browser_mode:
     window_size = None
 ui.run(root=root,
        title="Royal Papworth Hospital Barcode Printing Ver (2.2.0)",
