@@ -5,7 +5,7 @@ import win32print
 import requests
 import base64
 import argparse
-import threading
+from Helpers import strip, validate_input, OutputBarcode
 """
 ISBT 128 provides for unique identification of any donation event
 worldwide. It does this by using a 13-character identifier built from three
@@ -43,37 +43,27 @@ top_padding: str = "40"
 preview_debounce_timer: ui.timer | None = None
 skip_printing: bool = False
 browser_mode: bool = False
-
-def strip(text: str) -> str:
-    if text is None or len(text) < 13:
-        return ""
-    stripped_string = text
-    if stripped_string[0] == '=':
-        stripped_string = stripped_string[1:]
-    if output_mode_selection == 1:
-        return stripped_string[:13]
-    else:
-        return stripped_string[:15]
-
+output_barcode: OutputBarcode | None = None
+output_invalid_barcode: OutputBarcode | None = None
 
 def get_FIN(text: str) -> str:
-    output = strip(text)
+    output = strip(text, output_mode_selection)
     return output[0:5]
 
 
 def get_year(text: str) -> str:
-    output = strip(text)
+    output = strip(text, output_mode_selection)
     return output[5:7]
 
 
 def get_sequence_number(text: str) -> str:
-    output = strip(text)
+    output = strip(text, output_mode_selection)
     if len(output) < 13:
         return output[7:]
     return output[7:13]
 
 def get_check_characters(text: str) -> str:
-    output = strip(text)
+    output = strip(text, output_mode_selection)
     if len(output) >= 15:
         return output[13:15]
     else:
@@ -89,41 +79,41 @@ def calc_human_readable_check_character(characters: str) -> str:
     return table[digits]
 
 def format_barcode_string(barcode: str) -> str:
-    barcode = strip(barcode)
+    barcode = strip(barcode, output_mode_selection)
     return "{} {} {} {}".format(barcode[:4], barcode[4:7], barcode[7:10], barcode[10:])
 
 def generate_barcode_zpl(barcode: str) -> str:
-    barcode = strip(barcode)
+    barcode = strip(barcode, output_mode_selection)
     zpl = "^XA" \
           "^LH{},{}" \
           "^BY2,2,100" \
           "^FO0,0^BC,,N^FD{}^FS".format(left_padding, top_padding, barcode)
-    if output_mode_selection == 2:
+    if output_mode_selection == 2 and len(barcode) >= 15:
         zpl += ("^FO0,110^A0,40^FD{}  {}^FS" \
                 "^FO300,105^GB55,40,2^FS").format(
                     format_barcode_string(barcode[:-2]),
                     calc_human_readable_check_character(barcode[-2:]))
-    else:
+    elif output_mode_selection == 1:
         zpl += "^FO0,110^A0,40^FD{}^FS".format(format_barcode_string(barcode))
+    elif output_mode_selection == 3:
+        zpl += "^FO0,110^A0,40^FD{}^FS".format(barcode)
     zpl += "^XZ"
     return zpl
 
-
-def validate_input(text: str) -> bool:
-    if text is None:
-        return False
-    if output_mode_selection == 1:
-        return len(strip(text)) >= 13
-    else:
-        return len(strip(text)) >= 15 and text[-2:].isdigit() and int(text[-2:]) >= 20
-
+def update_user_input(text: str):
+    global output_barcode, output_invalid_barcode, output_mode_selection
+    update_zpl(text)
+    if output_barcode is not None:
+        output_barcode.update(text, output_mode_selection)
+    if output_invalid_barcode is not None:
+        output_invalid_barcode.update(text, output_mode_selection)
 
 def update_zpl(text: str):
-    global zpl_code, ui_images, debounce_timer
+    global zpl_code, ui_images, debounce_timer, output_mode_selection
     if debounce_timer is not None:
         debounce_timer.cancel()
 
-    if ui_images['zpl_preview'] is not None and validate_input(text):
+    if ui_images['zpl_preview'] is not None and validate_input(text, output_mode_selection):
         zpl = generate_barcode_zpl(text)
         zpl_code['value'] = zpl
         debounce_timer = ui.timer(debounce_delay, labelary_zpl_preview_image, once=True)
@@ -272,9 +262,9 @@ def send_zpl_to_printer(zpl_code, debug=True, printer_name=None) -> bool:
         return False
 
 def handle_key_enter():
-    global user_input, printer_select, debug_mode
+    global user_input, printer_select, debug_mode, output_mode_selection
     success = False
-    if user_input is not None and validate_input(user_input.value):
+    if user_input is not None and validate_input(user_input.value, output_mode_selection):
         if printer_select is not None:
             success = send_zpl_to_printer(zpl_code['value'], debug_mode, printer_select.value)
         else:
@@ -292,29 +282,40 @@ def handle_key(event):
 def handle_output_mode_change(text: int):
     global output_mode_selection, user_input, check_characters_span
     output_mode_selection = text
-    if check_characters_span is not None:
+    if output_mode_selection == 2 and check_characters_span is not None:
         check_characters_span.set_text(
             get_check_characters(user_input.value if user_input is not None else ''))
+    if user_input is not None and len(user_input.value) > 0:
+        temp_input = user_input.value
+        user_input.set_value('')
+        user_input.set_value(temp_input)
     update_zpl(user_input.value if user_input is not None else '')
 
 def root():
-    global zpl_preview_image_data, user_input, printer_select, output_mode_selection, check_characters_span
+    global zpl_preview_image_data, user_input, printer_select, check_characters_span, output_barcode, output_invalid_barcode
     ui.add_head_html('<link href="https://unpkg.com/eva-icons@1.1.3/style/eva-icons.css" rel="stylesheet" />')
     with ui.input(
         placeholder='Unit Number',
-        on_change=lambda e: update_zpl(e.value),
-        validation={'Invalid Barcode': lambda x: x is None or len(x) == 0 or validate_input(x)}) as user_input:
+        on_change=lambda e: update_user_input(e.value),
+        validation={'Invalid Barcode': lambda x: x is None or len(x) == 0 or validate_input(x, output_mode_selection)}) as user_input:
         user_input.on('keydown.enter', handle_key_enter)
         user_input.props('clearable autofocus')
         user_input.classes('text-xl')
         ui.icon("edit").props('size=lg')
-    output_mode = ui.radio({1: "Cross match", 2: "Full unit number"}, value=1,
+    output_mode = ui.radio({1: "Cross match", 2: "Full unit number", 3: "Free text"}, value=1,
                         on_change=lambda e: handle_output_mode_change(e.value))
+
     with html.section().style('font-size: 120%'):
         with ui.row():
+            output_barcode = OutputBarcode(user_input.value, output_mode.value)
+            output_invalid_barcode = OutputBarcode(user_input.value, output_mode.value, show_on_valid_input=False)
             ui.label("Output Barcode:")
+            with html.span().style("--nicegui-default-gap: 0; display: flex;"):
+                ui.label().bind_visibility_from(output_mode, 'value',
+                                                lambda x: x == 3).bind_text_from(
+                                                    user_input, 'value')
             with html.span().style("--nicegui-default-gap: 0; display: flex;").bind_visibility_from(
-                    user_input, "value", validate_input):
+                    output_barcode, "visible"):
                 with html.span().classes('text-red-500 hover:bg-yellow-300'):
                     ui.label().bind_text_from(user_input, 'value', get_FIN).tooltip("Facility Identification Number (FIN)")
                 with html.span().classes('text-blue-500 hover:bg-yellow-300'):
@@ -325,8 +326,10 @@ def root():
                     check_characters_span = ui.label().bind_visibility_from(
                         output_mode, 'value', lambda x: x == 2).bind_text_from(
                             user_input, 'value', get_check_characters).tooltip("Check Characters")
-            ui.label("Invalid barcode").style("color:red;").bind_visibility_from(
-                user_input, "value", lambda x: x is not None and not len(x) == 0 and not validate_input(x))
+
+            invalid_barcode_label = ui.label("Invalid barcode").style("color:red;")
+            invalid_barcode_label.bind_visibility_from(output_invalid_barcode, "visible")
+
     ui.add_css('''
     .nicegui-expansion .q-item {
         padding-left: 0px !important;
@@ -383,7 +386,7 @@ def root():
                    on_click=lambda: send_zpl_to_printer(zpl_code[
                        'value'], debug_mode, printer_select_local.value)) as print_button:
         print_button.props("size=xl")
-        print_button.bind_enabled_from(user_input, 'value', validate_input)
+        print_button.bind_enabled_from(user_input, 'value', lambda x: validate_input(x, output_mode_selection))
         ui.tooltip("Print (shortcut key: Enter)").classes('text-xs')
     ui.keyboard(on_key=handle_key)
     dark = ui.dark_mode()
@@ -411,7 +414,7 @@ if args.skip_printing:
 if args.browser:
     browser_mode = True
 
-window_size=(500, 780)
+window_size=(500, 800)
 if debug_mode or browser_mode:
     window_size = None
 ui.run(root=root,
