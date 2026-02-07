@@ -1,5 +1,5 @@
-pywin32 >= 3.0.0
-nicegui
+pywin32
+nicegui >= 3.0.0
 requests
 pywebview
 pyinstaller
